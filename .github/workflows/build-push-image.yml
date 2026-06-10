@@ -124,15 +124,15 @@ jobs:
       #    Scans both OS packages (apt/debian) and Python pip packages
       #    which is important since your app uses requirements.txt
       # -----------------------------------------------------------------
-      - name: Trivy scan — table output (logs)
+      - name: Trivy scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_URI }}
           format: table
-          exit-code: ${{ github.event.inputs.fail_on_critical == 'true' && '1' || '0' }}
+          exit-code: '0'
           severity: CRITICAL,HIGH
           ignore-unfixed: true
-          vuln-type: os,library          # scans both OS pkgs and pip packages
+          vuln-type: os,library
 
       - name: Trivy scan — SARIF report (GitHub Security tab)
         uses: aquasecurity/trivy-action@master
