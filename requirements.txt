@@ -1,0 +1,7 @@
+langchain>=0.2.0
+langgraph>=0.0.40
+langchain-google-genai>=1.0.0
+langchain-mcp-adapters
+python-dotenv
+fastapi
+uvicorn

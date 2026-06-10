@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub AI DevOps Agent Dashboard</title>
+    <meta name="description"
+        content="A sleek, real-time web dashboard for controlling GitHub via LangGraph and Gemini AI.">
+    <!-- Pavan Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23FFED4E'/><text x='50' y='60' font-size='50' font-weight='bold' text-anchor='middle' fill='%23001a3f' font-family='Arial'>P</text></svg>">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Style Sheet -->
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Panel -->
+        <aside class="sidebar" id="sidebar-panel">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">🚀</span>
+                    <h2>GitHub AI Agent</h2>
+                </div>
+            </div>
+
+            <!-- User Status Card -->
+            <div class="user-card" id="user-info-card">
+                <div class="avatar">
+                    <span id="user-avatar-initials">GH</span>
+                </div>
+                <div class="user-details">
+                    <span class="label">GITHUB OWNER</span>
+                    <span class="username" id="github-username">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Status Indicator Panel -->
+            <div class="status-panel">
+                <div class="status-item" id="status-mcp">
+                    <span class="pulse green"></span>
+                    <span class="status-label">GitHub MCP Server</span>
+                </div>
+                <div class="status-item" id="status-gemini">
+                    <span class="pulse green"></span>
+                    <span class="status-label">Gemini LLM API</span>
+                </div>
+                <div class="status-item" id="status-server">
+                    <span class="pulse green"></span>
+                    <span class="status-label">Backend Service</span>
+                </div>
+            </div>
+
+            <!-- Sidebar Stats Row -->
+            <div class="sidebar-stats">
+                <div class="stat-chip">
+                    <span class="stat-value" id="stat-tasks">0</span>
+                    <span class="stat-label">Tasks Run</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="stat-value" id="stat-tools">0</span>
+                    <span class="stat-label">Tool Calls</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="stat-value" id="stat-errors">0</span>
+                    <span class="stat-label">Errors</span>
+                </div>
+            </div>
+
+            <!-- Activity Feed -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-header">
+                    <span class="section-icon">⚡</span>
+                    <h4>Activity Feed</h4>
+                    <span class="section-badge" id="activity-badge">live</span>
+                </div>
+                <div class="activity-feed" id="activity-feed">
+                    <div class="activity-empty">No activity yet. Run a task to begin.</div>
+                </div>
+            </div>
+
+            <!-- Command History -->
+            <div class="sidebar-section sidebar-section--last">
+                <div class="sidebar-section-header">
+                    <span class="section-icon">🕓</span>
+                    <h4>Command History</h4>
+                    <button class="history-clear-btn" onclick="clearHistory()" title="Clear history">✕</button>
+                </div>
+                <div class="history-list" id="history-list">
+                    <div class="activity-empty">Commands you run will appear here.</div>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-workspace">
+            <!-- Owner Banner -->
+            <div class="owner-banner">
+                <div class="owner-info">
+                    <span class="owner-badge">OWNER & CREATOR</span>
+                    <span class="owner-name">Pavan Kalyan Pachuru</span>
+                </div>
+                <div class="owner-contact">
+                    <span class="contact-label">Contact Us:</span>
+                    <a href="https://github.com/iam-pavanpachuru" target="_blank" class="contact-link"
+                        title="GitHub Profile">
+                        <span class="icon">🐙</span> GitHub
+                    </a>
+                    <a href="https://www.linkedin.com/in/pavan-kalyan-pachuru-538a4016b" target="_blank"
+                        class="contact-link" title="LinkedIn Profile">
+                        <span class="icon">💼</span> LinkedIn
+                    </a>
+                    <a href="mailto:pavanpachuru1@gmail.com" class="contact-link" title="Send Email">
+                        <span class="icon">✉️</span> pavanpachuru1@gmail.com
+                    </a>
+                </div>
+            </div>
+
+            <header class="main-header">
+                <h1 id="main-heading">GitHub AI Agent Control Center</h1>
+                <div class="model-badge">
+                    <span class="badge-icon">🧠</span>
+                    <span id="active-model">Gemini 3.1 Flash / 2.5 Flash</span>
+                </div>
+            </header>
+
+            <!-- Tools Carousel (replaces sidebar tools + static suggestion cards) -->
+            <section class="tools-carousel-section" aria-label="MCP Tools Carousel">
+                <div class="tools-carousel-header">
+                    <h3 class="tools-carousel-title">Available MCP Tools (<span id="tools-count">0</span>)</h3>
+                    <div class="tools-carousel-search">
+                        <input type="text" id="tool-search-input" placeholder="Search tools...">
+                    </div>
+                    <div class="carousel-nav">
+                        <button class="carousel-btn" id="carousel-prev" onclick="scrollCarousel(-1)"
+                            title="Previous">&#8592;</button>
+                        <button class="carousel-btn" id="carousel-next" onclick="scrollCarousel(1)"
+                            title="Next">&#8594;</button>
+                    </div>
+                </div>
+                <div class="carousel-track-wrapper">
+                    <div class="suggestions-deck" id="tools-list-container" aria-label="Quick Action Cards">
+                        <div class="tool-skeleton"></div>
+                        <div class="tool-skeleton"></div>
+                        <div class="tool-skeleton"></div>
+                        <div class="tool-skeleton"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Terminal Console Container -->
+            <section class="terminal-container" aria-label="DevOps Execution Stream">
+                <div class="terminal-header">
+                    <div class="terminal-dots">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                    </div>
+                    <span class="terminal-title">devops-agent@stream-run</span>
+                    <button class="clear-btn" id="clear-console-btn" onclick="clearConsole()">Clear Logs</button>
+                </div>
+                <div class="terminal-body" id="console-stream-body">
+                    <div class="log-entry system">
+                        <span class="timestamp">[SYSTEM]</span> Welcome to GitHub AI Agent DevOps console. Select a
+                        quick action card or type a command below.
+                    </div>
+                </div>
+            </section>
+
+            <!-- Input Bar -->
+            <footer class="input-panel">
+                <div class="input-wrapper">
+                    <textarea id="prompt-textarea"
+                        placeholder="Instruct the agent... (e.g. 'Create a branch feat/dashboard in `devops-test-demo`' or 'Delete the repository `my-repo`')"
+                        rows="1"></textarea>
+                    <button class="execute-btn" id="execute-run-btn" onclick="executeTask()">
+                        <span class="btn-text">Execute</span>
+                        <span class="btn-spinner hidden"></span>
+                    </button>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Safety Confirmation Modal -->
+    <div class="modal-backdrop hidden" id="safety-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>⚠️ Action Authorization Required</h3>
+            </div>
+            <div class="modal-body">
+                <p>The AI Agent is requesting permission for a destructive operation:</p>
+                <div class="warning-box">
+                    <strong>Delete Repository:</strong> <span id="delete-repo-name"
+                        class="highlight-text">unknown</span>
+                </div>
+                <p>Deleting a repository is permanent and cannot be undone. To authorize this deletion, please type the
+                    repository name below exactly as shown:</p>
+                <input type="text" id="confirm-repo-input" placeholder="Type repository name to confirm...">
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-btn" id="modal-cancel-btn">Abort</button>
+                <button class="confirm-btn disabled" id="modal-confirm-btn" disabled>Confirm Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>

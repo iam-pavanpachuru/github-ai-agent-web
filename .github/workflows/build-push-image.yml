@@ -1,0 +1,233 @@
+name: Build, Push to ECR & Scan Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag (e.g. v1.0.0 — leave blank for git SHA)"
+        required: false
+        default: ""
+      fail_on_critical:
+        description: "Fail workflow if CRITICAL vulnerabilities found?"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+env:
+  AWS_REGION: eu-north-1
+  ECR_REPOSITORY: learning-eks-app     # change to your ECR repo name
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
+jobs:
+  build-push-scan:
+    name: Build → Push → Scan
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+      security-events: write            # for uploading SARIF to GitHub Security tab
+
+    steps:
+      # -----------------------------------------------------------------
+      # 1. Checkout
+      # -----------------------------------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------
+      # 2. Set image tag (manual input or git SHA)
+      # -----------------------------------------------------------------
+      - name: Set image tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+          fi
+
+      # -----------------------------------------------------------------
+      # 3. Set up Docker Buildx
+      #    Enables layer caching — speeds up repeated builds significantly
+      #    for your multi-stage Python + Node.js Dockerfile
+      # -----------------------------------------------------------------
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # -----------------------------------------------------------------
+      # 4. Configure AWS credentials
+      #    Required secrets: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+      # -----------------------------------------------------------------
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # -----------------------------------------------------------------
+      # 5. Create ECR repository if it doesn't already exist
+      #    scanOnPush=true enables ECR native scanning automatically
+      # -----------------------------------------------------------------
+      - name: Create ECR repository if not exists
+        run: |
+          aws ecr describe-repositories \
+            --repository-names $ECR_REPOSITORY \
+            --region $AWS_REGION 2>/dev/null || \
+          aws ecr create-repository \
+            --repository-name $ECR_REPOSITORY \
+            --region $AWS_REGION \
+            --image-scanning-configuration scanOnPush=true \
+            --encryption-configuration encryptionType=AES256
+          echo "ECR repository: $ECR_REPOSITORY is ready."
+
+      # -----------------------------------------------------------------
+      # 6. Login to ECR
+      # -----------------------------------------------------------------
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # -----------------------------------------------------------------
+      # 7. Build Docker image with layer cache
+      #    Cache key uses requirements.txt + package.json hashes so the
+      #    pip install and npm install layers are reused when unchanged
+      # -----------------------------------------------------------------
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false                   # don't push yet — scan first
+          load: true                    # load into local docker daemon for Trivy
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          labels: |
+            git-commit=${{ github.sha }}
+            build-date=${{ github.run_id }}
+            python-version=${{ env.PYTHON_VERSION }}
+            node-version=${{ env.NODE_VERSION }}
+          cache-from: type=gha          # GitHub Actions cache
+          cache-to: type=gha,mode=max
+
+      - name: Set IMAGE_URI env var
+        run: |
+          echo "IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}" >> $GITHUB_ENV
+          echo "REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
+
+      # -----------------------------------------------------------------
+      # 8. Trivy scan — BEFORE push (fail fast, don't push vulnerable images)
+      #    Scans both OS packages (apt/debian) and Python pip packages
+      #    which is important since your app uses requirements.txt
+      # -----------------------------------------------------------------
+      - name: Trivy scan — table output (logs)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_URI }}
+          format: table
+          exit-code: ${{ github.event.inputs.fail_on_critical == 'true' && '1' || '0' }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          vuln-type: os,library          # scans both OS pkgs and pip packages
+
+      - name: Trivy scan — SARIF report (GitHub Security tab)
+        uses: aquasecurity/trivy-action@master
+        if: always()
+        with:
+          image-ref: ${{ env.IMAGE_URI }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: true
+          vuln-type: os,library
+
+      - name: Upload Trivy SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+
+      # -----------------------------------------------------------------
+      # 9. Push to ECR
+      #    Only reaches here if Trivy passed (or fail_on_critical=false)
+      #    ECR native scan triggers automatically on push (scanOnPush=true)
+      # -----------------------------------------------------------------
+      - name: Push image to ECR
+        run: |
+          docker push $IMAGE_URI
+          docker push $REGISTRY/$ECR_REPOSITORY:latest
+          echo "Pushed: $IMAGE_URI"
+
+      # -----------------------------------------------------------------
+      # 10. Wait for ECR native scan and print results
+      #     ECR scans OS packages (different engine from Trivy — good to have both)
+      # -----------------------------------------------------------------
+      - name: Wait for ECR native scan to complete
+        run: |
+          echo "Waiting for ECR scan..."
+          for i in $(seq 1 20); do
+            STATUS=$(aws ecr describe-image-scan-findings \
+              --repository-name $ECR_REPOSITORY \
+              --image-id imageTag=$IMAGE_TAG \
+              --region $AWS_REGION \
+              --query 'imageScanStatus.status' \
+              --output text 2>/dev/null || echo "PENDING")
+
+            echo "  Attempt $i/20 — Status: $STATUS"
+            if [ "$STATUS" = "COMPLETE" ]; then
+              echo "ECR scan complete."
+              break
+            fi
+            sleep 15
+          done
+
+      - name: Print ECR native scan findings
+        run: |
+          echo "====== ECR Native Scan Results ======"
+          aws ecr describe-image-scan-findings \
+            --repository-name $ECR_REPOSITORY \
+            --image-id imageTag=$IMAGE_TAG \
+            --region $AWS_REGION \
+            --query 'imageScanFindings.findingSeverityCounts' \
+            --output table
+
+          CRITICAL=$(aws ecr describe-image-scan-findings \
+            --repository-name $ECR_REPOSITORY \
+            --image-id imageTag=$IMAGE_TAG \
+            --region $AWS_REGION \
+            --query 'imageScanFindings.findingSeverityCounts.CRITICAL' \
+            --output text 2>/dev/null || echo "0")
+
+          CRITICAL=${CRITICAL:-0}
+          echo "CRITICAL count: $CRITICAL"
+
+          if [ "${{ github.event.inputs.fail_on_critical }}" = "true" ] && \
+             [ "$CRITICAL" != "0" ] && [ "$CRITICAL" != "None" ]; then
+            echo "Failing — $CRITICAL CRITICAL vulnerabilities found in ECR scan."
+            exit 1
+          fi
+
+      # -----------------------------------------------------------------
+      # 11. Workflow summary
+      # -----------------------------------------------------------------
+      - name: Job summary
+        if: always()
+        run: |
+          echo "## ECR Build & Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Image URI | \`$IMAGE_URI\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tag | \`$IMAGE_TAG\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Region | \`$AWS_REGION\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| ECR Repo | \`$ECR_REPOSITORY\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Git SHA | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Python | \`${{ env.PYTHON_VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Node.js | \`${{ env.NODE_VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trivy results | GitHub Security tab |" >> $GITHUB_STEP_SUMMARY
+          echo "| ECR scan results | ECR Console → $ECR_REPOSITORY |" >> $GITHUB_STEP_SUMMARY
