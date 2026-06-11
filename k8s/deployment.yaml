@@ -20,7 +20,7 @@ spec:
       containers:
       - name: devops-agent
 
-        image: 145043400170.dkr.ecr.eu-north-1.amazonaws.com/pavan-devops-ecr:v1.0.0
+        image: 145043400170.dkr.ecr.eu-north-1.amazonaws.com/pavan-devops-ecr:latest
 
         imagePullPolicy: Always
 
