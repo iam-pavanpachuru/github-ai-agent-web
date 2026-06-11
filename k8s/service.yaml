@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: devops-agent-service
+  namespace: devops-agent
+
+spec:
+  type: LoadBalancer
+
+  selector:
+    app: devops-agent
+
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
