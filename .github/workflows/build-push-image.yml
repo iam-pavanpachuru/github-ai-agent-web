@@ -7,7 +7,9 @@ on:
         description: "Image tag (leave blank for git SHA)"
         required: false
         default: ""
-
+  push:
+    branches:
+      - main
 env:
   AWS_REGION: eu-north-1
   ECR_REPOSITORY: pavan-devops-ecr
