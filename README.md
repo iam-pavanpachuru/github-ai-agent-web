@@ -14,7 +14,7 @@ with a real-time streaming DevOps dashboard.
 **Built & maintained by [Pavan Kalyan Pachuru](https://github.com/iam-pavanpachuru)**
 
 [![GitHub](https://img.shields.io/badge/GitHub-iam--pavanpachuru-181717?style=flat&logo=github)](https://github.com/iam-pavanpachuru)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Pavan%20Kalyan-0A66C2?style=flat&logo=linkedin)](https://www.linkedin.com/in/pavan-kalyan-pachuru-538a4016b)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Pavan%20Kalyan%20Pachuru-0A66C2?style=flat&logo=linkedin)](https://www.linkedin.com/in/pavan-kalyan-pachuru-538a4016b)
 [![Email](https://img.shields.io/badge/Email-pavanpachuru1%40gmail.com-EA4335?style=flat&logo=gmail)](mailto:pavanpachuru1@gmail.com)
 
 </div>
