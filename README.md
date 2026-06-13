@@ -66,6 +66,8 @@ You can also browse and use the **Available MCP Tools** carousel on the dashboar
 
 Every step the agent takes — tool calls, reasoning, results — streams live to your browser as it happens.
 
+<img src="images/available_tools.png" alt="Available Tools" width="600">
+
 ---
 
 ## ⚙️ How It Works
