@@ -4,7 +4,7 @@
 
 # 🚀 GitHub AI Agent — Web Dashboard
 
-### Control your entire GitHub account through plain English commands
+### Control your entire GitHub account through plain English commands.
 
 Powered by **Google Gemini**, **LangGraph ReAct**, and the **GitHub MCP Server** —
 with a real-time streaming DevOps dashboard.
@@ -14,7 +14,7 @@ with a real-time streaming DevOps dashboard.
 **Built & maintained by [Pavan Kalyan Pachuru](https://github.com/iam-pavanpachuru)**
 
 [![GitHub](https://img.shields.io/badge/GitHub-iam--pavanpachuru-181717?style=flat&logo=github)](https://github.com/iam-pavanpachuru)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Pavan%20Kalyan%20Pachuru-0A66C2?style=flat&logo=linkedin)](https://www.linkedin.com/in/pavan-kalyan-pachuru-538a4016b)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Pavan%20Kalyan-0A66C2?style=flat&logo=linkedin)](https://www.linkedin.com/in/pavan-kalyan-pachuru-538a4016b)
 [![Email](https://img.shields.io/badge/Email-pavanpachuru1%40gmail.com-EA4335?style=flat&logo=gmail)](mailto:pavanpachuru1@gmail.com)
 
 </div>
@@ -65,8 +65,6 @@ You can also browse and use the **Available MCP Tools** carousel on the dashboar
 > The carousel supports live search, so you can filter tools by name instantly.
 
 Every step the agent takes — tool calls, reasoning, results — streams live to your browser as it happens.
-
-<img src="images/available_tools.png" alt="Available Tools" width="600">
 
 ---
 
@@ -202,7 +200,7 @@ You need exactly **3 values** to run the application.
 ☑ read:user         ← read your profile and username
 ```
 
-1. Click **Generate token** and copy immediately — it is only shown once
+6. Click **Generate token** and copy immediately — it is only shown once
 
 ---
 
@@ -289,7 +287,6 @@ http://localhost:8000
 ```
 
 You should see the **GitHub AI Agent Control Center** with all three status indicators showing green:
-
 - 🟢 GitHub MCP Server
 - 🟢 Gemini LLM API
 - 🟢 Backend Service
@@ -374,7 +371,6 @@ aws configure
 ```
 
 Enter when prompted:
-
 - **AWS Access Key ID** — from your IAM user
 - **AWS Secret Access Key** — from your IAM user
 - **Default region** — e.g. `eu-north-1`
@@ -389,7 +385,6 @@ aws ecr create-repository \
 ```
 
 The output will include a `repositoryUri` that looks like:
-
 ```
 145043400170.dkr.ecr.eu-north-1.amazonaws.com/pavan-devops-ecr
 ```
@@ -459,7 +454,6 @@ aws eks update-kubeconfig \
 ```
 
 Confirm access:
-
 ```bash
 kubectl get nodes
 ```
@@ -487,7 +481,6 @@ kubectl create secret generic devops-agent-secret \
 > The `deployment.yaml` already references this secret by name via `envFrom.secretRef.name: devops-agent-secret`. The container reads the env vars at startup.
 
 Verify the secret was created:
-
 ```bash
 kubectl get secret devops-agent-secret -n devops-agent
 ```
@@ -543,7 +536,6 @@ kubectl get all -n devops-agent
 ```
 
 Expected pod output once running:
-
 ```
 NAME                             READY   STATUS    RESTARTS   AGE
 devops-agent-7d9f6b8c4-xk2lm    1/1     Running   0          2m
@@ -556,14 +548,12 @@ kubectl get service devops-agent-service -n devops-agent
 ```
 
 Wait until the `EXTERNAL-IP` column is populated (1–2 minutes):
-
 ```
 NAME                    TYPE           CLUSTER-IP     EXTERNAL-IP                                           PORT(S)
 devops-agent-service    LoadBalancer   10.100.42.17   a531568bc9fa54bbe9b38-xxx.eu-north-1.elb.amazonaws.com   80:31234/TCP
 ```
 
 Open the EXTERNAL-IP in your browser:
-
 ```
 http://a531568bc9fa54bbe9b38-xxx.eu-north-1.elb.amazonaws.com
 ```
@@ -588,7 +578,6 @@ kubectl rollout restart deployment/devops-agent -n devops-agent
 # 3. Watch the rollout
 kubectl rollout status deployment/devops-agent -n devops-agent
 ```
-
 ---
 
 ## 🤖 CI/CD — GitHub Actions Workflow
@@ -701,7 +690,6 @@ aws iam attach-role-policy \
 ```
 
 Copy the Role ARN from the output — it looks like:
-
 ```
 arn:aws:iam::145043400170:role/GitHubActionsECRRole
 ```
@@ -726,7 +714,6 @@ That is the only secret required. No `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_K
 | Manual trigger with custom tag | `<your-custom-tag>` + `latest` |
 
 Both the SHA-tagged and `latest`-tagged images are pushed on every run, so:
-
 - **`latest`** is always what the Kubernetes deployment pulls (`imagePullPolicy: Always`)
 - **SHA tags** give you a full audit trail — you can roll back to any previous commit's image
 
@@ -736,17 +723,15 @@ Both the SHA-tagged and `latest`-tagged images are pushed on every run, so:
 
 After every successful run, the workflow prints a summary table directly on the GitHub Actions run page:
 
-```
-| Field     | Value                                                              |
-|-----------|---------------------------------------------------------------------|
-| Image URI | 145043400170.dkr.ecr.eu-north-1.amazonaws.com/pavan-devops-ecr:<sha> |
-| Tag       | <sha>                                                               |
-| Region    | eu-north-1                                                          |
-| ECR Repo  | pavan-devops-ecr                                                    |
-| Git SHA   | <sha>                                                               |
-| Python    | 3.11                                                                |
-| Node.js   | 20                                                                  |
-```
+| Field     | Value                                                                 |
+|-----------|-----------------------------------------------------------------------|
+| Image URI | `145043400170.dkr.ecr.eu-north-1.amazonaws.com/pavan-devops-ecr:<sha>` |
+| Tag       | `<sha>`                                                               |
+| Region    | `eu-north-1`                                                          |
+| ECR Repo  | `pavan-devops-ecr`                                                    |
+| Git SHA   | `<sha>`                                                               |
+| Python    | `3.11`                                                                |
+| Node.js   | `20`                                                                  |
 
 ---
 
@@ -770,6 +755,7 @@ ArgoCD detects the change and syncs to EKS automatically
 New version is live — zero manual steps
 ```
 
+
 ---
 
 ## 🔄 GitOps with ArgoCD *(Optional)*
@@ -777,7 +763,6 @@ New version is live — zero manual steps
 ArgoCD watches your Git repository and automatically syncs changes to your EKS cluster — no manual `kubectl apply` needed after the first setup.
 
 The `argocd/application.yaml` in this repo configures ArgoCD to:
-
 - Watch the `main` branch of your GitHub repo
 - Sync changes to the `devops-agent` namespace
 - **Auto-prune** resources removed from Git
@@ -946,7 +931,6 @@ curl http://localhost:8000/api/status
 ```
 
 Common causes:
-
 - `.env` file missing or has incorrect variable names
 - GitHub PAT has expired or lacks the required scopes
 - Gemini API key is invalid or quota is exhausted
@@ -975,7 +959,6 @@ docker run --rm github-ai-agent:latest npx --version
 ```
 
 If these fail, rebuild the image from scratch:
-
 ```bash
 docker build --no-cache -t github-ai-agent:latest .
 ```
@@ -1009,7 +992,6 @@ aws iam attach-role-policy \
 ```
 
 After attaching the policy, delete and let Kubernetes recreate the pod:
-
 ```bash
 kubectl delete pod -n devops-agent -l app=devops-agent
 ```
